@@ -56,13 +56,14 @@ The sync pulls the last `META_SYNC_DAYS` days of daily account insights and upse
 
 ## Deploying to the VPS
 
-The app runs under PM2 on port **7006**, bound to 127.0.0.1. nginx serves it at **https://base44.blendfoldmedia.com**. Set `VPS_HOST` (and `VPS_USER` if not root) at the top of **both** `deploy.sh` and `update.sh`, then run from Git Bash:
+The app runs under PM2 on port **7006**, bound to 127.0.0.1. nginx serves it at **https://base44.blendfoldmedia.com**. Both scripts run **on the VPS**, inside the project folder:
 
 ```bash
-./deploy.sh    # first time: server setup (Node 22, PM2, nginx, SSL, Meta sync cron), uploads .env, deploys
-./update.sh    # every later code change
+# on the VPS: put the project in a folder (e.g. /var/www/perstrive-dashboard) with your .env, then
+./deploy.sh    # first time: Node 22, PM2, nginx site, SSL, Meta sync cron, build and start
+./update.sh    # after each code change: install, migrate, build, swap in, restart
 ```
 
-Before running `deploy.sh`, add a DNS **A record** pointing `base44` → the VPS IP. Otherwise the SSL step fails and logins won't work, because the session cookie is HTTPS-only in production. `deploy.sh` is safe to re-run: re-run it after fixing DNS, or to push a changed `.env`.
+Before running `deploy.sh`, the DNS **A record** for `base44` must point at the VPS. Otherwise the SSL step fails and logins won't work, because the session cookie is HTTPS-only in production. `deploy.sh` is safe to re-run.
 
-Each update goes into `/var/www/perstrive-dashboard/releases/<timestamp>`. If the new version doesn't respond, the script rolls back automatically. The last 5 releases are kept. The Meta sync log is at `/var/www/perstrive-dashboard/shared/sync.log`.
+`update.sh` runs `git pull` first if the folder is a git checkout. It builds into `.next-build` while the live site keeps running, and only swaps the new build in once it succeeds. If the app doesn't come back up, it restores the previous build. The Meta sync runs every 3 hours and logs to `sync.log`.

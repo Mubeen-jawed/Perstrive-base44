@@ -4,8 +4,9 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 export default function nextConfig(phase) {
   return {
     serverExternalPackages: ["pg"],
-    // `next dev` and `next build` get separate output folders, so running a build
-    // never corrupts a dev server that's already running.
-    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+    // `next dev` gets its own folder so a build never corrupts a running dev server.
+    // update.sh builds into NEXT_DIST_DIR=.next-build and swaps it in once it succeeds.
+    distDir:
+      phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : process.env.NEXT_DIST_DIR || ".next",
   };
 }
