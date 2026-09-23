@@ -3,7 +3,7 @@ import { connect } from "./_db";
 // Creates a location for every Meta ad account (visible to META_ACCESS_TOKEN) whose name
 // contains the given text. Existing locations with the same ad account ID are left as-is.
 //
-// Usage: npm run meta:import -- perstrive
+// Usage: npm run meta:import -- scf
 
 const ACTIVE = 1; // Meta account_status: 1 = active, 2 = disabled, 3 = unsettled, 101 = closed
 

@@ -6,7 +6,7 @@
 # (DB_NAME/DB_USER) and points DATABASE_URL in .env at it, adds an nginx site for DOMAIN that
 # proxies to 127.0.0.1:7006, gets an SSL certificate, starts PM2 on boot, schedules the Meta
 # sync every 3 hours, runs ./update.sh to build and start the app, then creates the admin
-# user, imports the Perstrive ad accounts and runs a first sync. Safe to re-run.
+# user, imports the SCF ad accounts and runs a first sync. Safe to re-run.
 #
 # Before running: the DNS A record for DOMAIN must point at this server (needed for SSL;
 # logins only work over HTTPS in production), and .env must be in this folder.
@@ -78,24 +78,54 @@ if [ "$CURRENT_URL" != "$LOCAL_URL" ]; then
 fi
 
 echo "==> nginx site for $DOMAIN"
-# Debian/Ubuntu nginx loads sites-enabled/; nginx.org packages only load conf.d/.
-if grep -qE '^[[:space:]]*include[[:space:]]+/etc/nginx/sites-enabled' /etc/nginx/nginx.conf; then
-  SITE="/etc/nginx/sites-available/$DOMAIN"
-  LINK="/etc/nginx/sites-enabled/$DOMAIN"
-else
-  SITE="/etc/nginx/conf.d/$DOMAIN.conf"
-  LINK=""
+# conf.d/ is loaded by both Debian-style and nginx.org installs. The file is fully managed
+# here (HTTP + HTTPS), so certbot never edits nginx config for this domain.
+SITE="/etc/nginx/conf.d/$DOMAIN.conf"
+CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
+ACME_ROOT="/var/www/letsencrypt"
+# Earlier versions of this script used sites-available/sites-enabled.
+$SUDO rm -f "/etc/nginx/sites-enabled/$DOMAIN" "/etc/nginx/sites-available/$DOMAIN"
+
+# Another server block for this domain (e.g. one certbot cloned from another site's
+# default_server, pointing at that site's port) would conflict with ours. Stop and show it.
+OTHERS="$($SUDO grep -rlE "server_name[^;]*[[:space:]]${DOMAIN//./\.}([[:space:]]|;)" /etc/nginx 2>/dev/null \
+  | xargs -r -n1 readlink -f | sort -u | grep -vx "$SITE" || true)"
+if [ -n "$OTHERS" ]; then
+  echo "    !! These nginx files also define $DOMAIN and would override this app:"
+  for f in $OTHERS; do $SUDO grep -nF "$DOMAIN" "$f" | sed "s#^#       $f:#"; done
+  echo "    !! Remove the $DOMAIN server block(s) from those files, then re-run ./deploy.sh."
+  exit 1
 fi
-if [ -f "$SITE" ]; then
-  echo "    $SITE exists; keeping it."
-  grep -q "proxy_pass http://127.0.0.1:$PORT" "$SITE" ||
-    echo "    !! $SITE does not proxy to 127.0.0.1:$PORT. Delete it and re-run ./deploy.sh."
-else
-  $SUDO tee "$SITE" >/dev/null <<NGINX
+
+write_site() {  # $1 = ssl | nossl
+  local http_body
+  if [ "$1" = ssl ]; then
+    http_body="location / { return 301 https://\$host\$request_uri; }"
+  else
+    http_body="location / { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; proxy_set_header X-Forwarded-Host \$host; proxy_set_header X-Forwarded-Proto \$scheme; }"
+  fi
+  {
+    cat <<NGINX
+# Managed by deploy.sh (Perstrive dashboard). Re-running deploy.sh rewrites this file.
 server {
     listen 80;
     listen [::]:80;
     server_name $DOMAIN;
+
+    location /.well-known/acme-challenge/ { root $ACME_ROOT; }
+    $http_body
+}
+NGINX
+    [ "$1" = ssl ] && cat <<NGINX
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name $DOMAIN;
+
+    ssl_certificate     $CERT_DIR/fullchain.pem;
+    ssl_certificate_key $CERT_DIR/privkey.pem;
+
     client_max_body_size 10m;
 
     location / {
@@ -112,26 +142,32 @@ server {
     }
 }
 NGINX
-fi
-[ -n "$LINK" ] && $SUDO ln -sf "$SITE" "$LINK"
-$SUDO nginx -t
-$SUDO systemctl reload nginx
+    true
+  } | $SUDO tee "$SITE" >/dev/null
+  $SUDO nginx -t
+  $SUDO systemctl reload nginx
+}
 
-echo "==> SSL certificate"
-# Without a 443 block for this domain, HTTPS requests fall through to nginx's default
-# HTTPS site (another project). certbot adds the 443 block; with an existing certificate
-# it just installs it (--keep-until-expiring) instead of issuing a new one.
-if $SUDO grep -q "listen 443" "$SITE"; then
-  echo "    HTTPS already configured."
-else
+$SUDO mkdir -p "$ACME_ROOT"
+if ! $SUDO test -f "$CERT_DIR/fullchain.pem"; then
+  write_site nossl
+  echo "==> SSL certificate"
   EMAIL_ARG="--register-unsafely-without-email"
   [ -n "$CERTBOT_EMAIL" ] && EMAIL_ARG="-m $CERTBOT_EMAIL"
-  $SUDO certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --redirect \
-    --keep-until-expiring $EMAIL_ARG || {
-    echo "    !! certbot failed. Check that the DNS A record for $DOMAIN points at this server:"
+  # certonly + webroot: gets the certificate without touching any nginx files.
+  $SUDO certbot certonly --webroot -w "$ACME_ROOT" -d "$DOMAIN" \
+    --non-interactive --agree-tos --keep-until-expiring $EMAIL_ARG || {
+    echo "    !! certbot failed. Check the DNS A record for $DOMAIN points at this server:"
     echo "    !!   getent hosts $DOMAIN"
     echo "    !! then re-run ./deploy.sh (logins need HTTPS)."
   }
+fi
+if $SUDO test -f "$CERT_DIR/fullchain.pem"; then
+  write_site ssl
+  # Reload nginx after automatic renewals.
+  echo 'systemctl reload nginx' | $SUDO tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh >/dev/null
+  $SUDO chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+  echo "    HTTPS configured."
 fi
 
 echo "==> PM2 on boot"
@@ -148,7 +184,7 @@ bash ./update.sh
 echo "==> Admin user and Meta accounts"
 npm run --silent db:seed
 if grep -q '^META_ACCESS_TOKEN=.' .env; then
-  npm run --silent meta:import -- perstrive
+  npm run --silent meta:import -- scf
   if [ "$(psql "$LOCAL_URL" -qtAc 'select count(*) from daily_metrics')" = "0" ]; then
     echo "==> First Meta sync (can take a minute)"
     SECRET="$(grep -m1 '^CRON_SECRET=' .env | cut -d= -f2-)"
