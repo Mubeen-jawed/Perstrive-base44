@@ -56,18 +56,13 @@ The sync pulls the last `META_SYNC_DAYS` days of daily account insights and upse
 
 ## Deploying to the VPS
 
-The app runs under PM2 on port **7006**, bound to 127.0.0.1. nginx serves it at **https://base44.blendfoldmedia.com**, with a certificate from Let's Encrypt. Run these commands from Git Bash:
+The app runs under PM2 on port **7006**, bound to 127.0.0.1. nginx serves it at **https://base44.blendfoldmedia.com**. Set `VPS_HOST` (and `VPS_USER` if not root) at the top of **both** `deploy.sh` and `update.sh`, then run from Git Bash:
 
 ```bash
-cp deploy/deploy.config.example deploy/deploy.config   # set VPS_HOST (and VPS_USER if not root)
-./deploy/deploy.sh setup    # first time: Node 22, PM2, nginx site, SSL, Meta sync cron, .env, deploy
-./deploy/deploy.sh          # every later deploy
+./deploy.sh    # first time: server setup (Node 22, PM2, nginx, SSL, Meta sync cron), uploads .env, deploys
+./update.sh    # every later code change
 ```
 
-Before running `setup`, add a DNS **A record** pointing `base44` → your VPS IP. Otherwise the SSL step fails and logins won't work, because the session cookie is HTTPS-only in production. If that happens, fix DNS and run `./deploy/deploy.sh ssl`.
+Before running `deploy.sh`, add a DNS **A record** pointing `base44` → the VPS IP. Otherwise the SSL step fails and logins won't work, because the session cookie is HTTPS-only in production. `deploy.sh` is safe to re-run: re-run it after fixing DNS, or to push a changed `.env`.
 
-On the server:
-- Each deploy goes into `/var/www/perstrive-dashboard/releases/<timestamp>` and runs `npm ci`, `db:migrate` and `build`. If `/login` responds, `current` switches to the new release. If it doesn't, the script rolls back to the previous release. The last 5 releases are kept.
-- `.env` is stored once in `shared/.env`. Run `./deploy/deploy.sh env` after changing your local `.env`, for example with a new Meta token.
-- The Meta sync runs every 3 hours from cron and logs to `shared/sync.log`.
-- Other commands: `./deploy/deploy.sh status` and `./deploy/deploy.sh logs`.
+Each update goes into `/var/www/perstrive-dashboard/releases/<timestamp>`. If the new version doesn't respond, the script rolls back automatically. The last 5 releases are kept. The Meta sync log is at `/var/www/perstrive-dashboard/shared/sync.log`.
