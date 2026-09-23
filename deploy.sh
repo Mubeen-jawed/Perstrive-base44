@@ -5,7 +5,7 @@
 # Installs Node 22, PM2, nginx, certbot and PostgreSQL if missing, creates the local database
 # (DB_NAME/DB_USER) and points DATABASE_URL in .env at it, adds an nginx site for DOMAIN that
 # proxies to 127.0.0.1:7006, gets an SSL certificate, starts PM2 on boot, schedules the Meta
-# sync every 3 hours, runs ./update.sh to build and start the app, then creates the admin
+# sync every hour, runs ./update.sh to build and start the app, then creates the admin
 # user, imports the SCF ad accounts and runs a first sync. Safe to re-run.
 #
 # Before running: the DNS A record for DOMAIN must point at this server (needed for SSL;
@@ -173,10 +173,10 @@ fi
 echo "==> PM2 on boot"
 $SUDO env PATH="$PATH" pm2 startup systemd -u "$(id -un)" --hp "$HOME" >/dev/null
 
-echo "==> Meta sync every 3 hours (log: $APP_DIR/sync.log)"
+echo "==> Meta sync every hour (log: $APP_DIR/sync.log)"
 SYNC_CMD="cd $APP_DIR && curl -s -m 290 -X POST -H \"Authorization: Bearer \$(grep '^CRON_SECRET=' .env | cut -d= -f2-)\" http://127.0.0.1:$PORT/api/sync/meta >> sync.log 2>&1; echo >> sync.log"
 ( crontab -l 2>/dev/null | grep -v "/api/sync/meta" || true
-  echo "0 */3 * * * $SYNC_CMD" ) | crontab -
+  echo "0 * * * * $SYNC_CMD" ) | crontab -
 
 echo "==> Build and start"
 bash ./update.sh

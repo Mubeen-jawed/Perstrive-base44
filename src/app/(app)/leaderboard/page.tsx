@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpDown, Trophy } from "lucide-react";
 import FilterSelect from "@/components/FilterSelect";
+import RowLink from "@/components/RowLink";
 import { PageHeader, StatusDot, thead } from "@/components/ui";
 import { query } from "@/lib/db";
 import { dec, LP1K_TARGET, money, num } from "@/lib/format";
@@ -113,7 +114,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                 rows.map((l, i) => {
                   const good = l.leads_per_1k >= LP1K_TARGET;
                   return (
-                    <tr key={l.id} className="border-t hover:bg-muted/40">
+                    <RowLink key={l.id} href={`/location/${l.id}`} className="border-t hover:bg-muted/40">
                       <td className="px-4 py-3 font-semibold text-muted-foreground">{i + 1}</td>
                       <td className="px-4 py-3">
                         <Link href={`/location/${l.id}`} className="font-semibold hover:text-primary">
@@ -142,7 +143,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                       <td className="px-4 py-3">
                         <StatusDot status={l.status} />
                       </td>
-                    </tr>
+                    </RowLink>
                   );
                 })
               )}

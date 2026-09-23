@@ -68,4 +68,4 @@ Before running `deploy.sh`, the DNS **A record** for `base44` must point at the 
 
 `deploy.sh` creates a local PostgreSQL database and user (`perstrive`) with a random password if they don't exist yet, and points `DATABASE_URL` in `.env` at it. The previous `.env` is saved as `.env.bak-<timestamp>`. Because the new database starts empty, it then creates the admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD`, imports the SCF ad accounts and runs a first Meta sync.
 
-`update.sh` runs `git pull` first if the folder is a git checkout. It builds into `.next-build` while the live site keeps running, and only swaps the new build in once it succeeds. If the app doesn't come back up, it restores the previous build. The Meta sync runs every 3 hours and logs to `sync.log`.
+`update.sh` runs `git pull` first if the folder is a git checkout. It builds into `.next-build` while the live site keeps running, and only swaps the new build in once it succeeds. If the app doesn't come back up, it restores the previous build. The Meta sync runs every hour and logs to `sync.log`.
