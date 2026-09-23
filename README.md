@@ -60,10 +60,12 @@ The app runs under PM2 on port **7006**, bound to 127.0.0.1. nginx serves it at 
 
 ```bash
 # on the VPS: put the project in a folder (e.g. /var/www/perstrive-dashboard) with your .env, then
-./deploy.sh    # first time: Node 22, PM2, nginx site, SSL, Meta sync cron, build and start
+./deploy.sh    # first time: Node 22, PM2, PostgreSQL + database, nginx site, SSL, Meta sync cron, build and start
 ./update.sh    # after each code change: install, migrate, build, swap in, restart
 ```
 
 Before running `deploy.sh`, the DNS **A record** for `base44` must point at the VPS. Otherwise the SSL step fails and logins won't work, because the session cookie is HTTPS-only in production. `deploy.sh` is safe to re-run.
+
+`deploy.sh` creates a local PostgreSQL database and user (`perstrive`) with a random password if they don't exist yet, and points `DATABASE_URL` in `.env` at it. The previous `.env` is saved as `.env.bak-<timestamp>`. Because the new database starts empty, it then creates the admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD`, imports the Perstrive ad accounts and runs a first Meta sync.
 
 `update.sh` runs `git pull` first if the folder is a git checkout. It builds into `.next-build` while the live site keeps running, and only swaps the new build in once it succeeds. If the app doesn't come back up, it restores the previous build. The Meta sync runs every 3 hours and logs to `sync.log`.
