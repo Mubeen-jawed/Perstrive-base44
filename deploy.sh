@@ -11,12 +11,12 @@
 set -euo pipefail
 
 # ---- Settings (keep in sync with update.sh) ----
-VPS_HOST="${VPS_HOST:-}"                 # VPS IP address, e.g. 203.0.113.10
+VPS_HOST="${VPS_HOST:-37.60.238.73}"                 # VPS IP address, e.g. 203.0.113.10
 VPS_USER="${VPS_USER:-root}"             # needs sudo if not root
 SSH_PORT="${SSH_PORT:-22}"
 APP_DIR="${APP_DIR:-/var/www/perstrive-dashboard}"
 DOMAIN="${DOMAIN:-base44.blendfoldmedia.com}"
-CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"       # optional: Let's Encrypt expiry notices
+CERTBOT_EMAIL="${CERTBOT_EMAIL:-jawedmubeen905@gmail.com}"       # optional: Let's Encrypt expiry notices
 PORT=7006
 # -------------------------------------------------
 
