@@ -1,0 +1,37 @@
+{
+  "name": "perstrive-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:demo": "tsx scripts/seed.ts --demo",
+    "user:create": "tsx scripts/create-user.ts",
+    "meta:import": "tsx scripts/import-meta-accounts.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "lucide-react": "^1.47.0",
+    "next": "^15.5.26",
+    "pg": "^8.23.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^2.15.4",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^26.6.2",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "dotenv": "^18.0.3",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

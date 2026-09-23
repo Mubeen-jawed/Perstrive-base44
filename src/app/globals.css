@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* Design tokens taken from the reference dashboard. */
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: #f6f7f9;
+  --color-foreground: #0a0c10;
+  --color-card: #ffffff;
+  --color-primary: #e8151b;
+  --color-muted: #e4e7ec;
+  --color-muted-foreground: #5b6270;
+  --color-border: #e4e7ec;
+  --color-positive: #1f9d55;
+  --color-sidebar: #0a0c10;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -1px;
+  }
+}
